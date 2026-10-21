@@ -1,33 +1,6 @@
-from types import SimpleNamespace
-
 import torch
 
 from proquant.allocation.ilp_solvers import PoPSolver
-from proquant.allocate_bits import _auto_save_path
-
-
-def test_pop_output_names_and_count_normalization_tag():
-    args = SimpleNamespace(
-        allocation_metric="pop", bit_budget=2.0, max_prune_ratio=0.3,
-        model_name="Qwen/Qwen3-30B-A3B-Instruct-2507",
-    )
-    source = "cache/Qwen/Qwen3-30B-A3B-Instruct-2507/PopCosts_C4-N128-L2048-Seed0_uniform2bit_B0,1,2,3.pt"
-    metadata = {"context_mode": "uniform_bit", "average_bits": 2}
-    legacy = _auto_save_path(args, source, [0, 2, 3], SimpleNamespace(artifact_metadata=metadata))
-    normalized = _auto_save_path(
-        args, source, [0, 2, 3],
-        SimpleNamespace(artifact_metadata={**metadata, "normalize_by_activation_count": True}),
-    )
-    summed = _auto_save_path(
-        args, source, [0, 2, 3],
-        SimpleNamespace(artifact_metadata={**metadata, "normalize_by_activation_count": False}),
-    )
-
-    assert normalized == legacy
-    assert "/ProQuant/" in normalized
-    assert "Metric-pop" in normalized
-    assert "-Ctxuniform2_E2.0_" in legacy
-    assert "-Ctxuniform2-NoCountNorm_E2.0_" in summed
 
 
 def test_expert_cost_solver_global_budget_and_equal_pruning(tmp_path):

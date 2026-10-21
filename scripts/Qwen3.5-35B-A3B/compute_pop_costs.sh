@@ -5,7 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../.." && pwd)"
 cd "${repo_root}"
 
-model_name="Qwen/Qwen3-30B-A3B-Instruct-2507"
+model_name="Qwen/Qwen3.5-35B-A3B"
 model="${MODEL:-${model_name}}"
 model_dtype="${MODEL_DTYPE:-bfloat16}"
 attn_impl="${ATTN_IMPL:-eager}"
@@ -92,7 +92,7 @@ if [[ "${normalize_by_activation_count}" == "false" ]]; then
 fi
 output_path="${OUTPUT_PATH:-${default_output}}"
 
-echo "Computing Qwen3-MoE PoP expert costs"
+echo "Computing Qwen3.5-MoE PoP expert costs"
 echo "  context=${context_mode}, average_bits=${average_bits}, candidates=${candidate_bits}"
 echo "  normalize_by_activation_count=${normalize_by_activation_count}"
 echo "  calibration=${dataset}, nsamples=${nsamples}, seqlen=${seqlen}"

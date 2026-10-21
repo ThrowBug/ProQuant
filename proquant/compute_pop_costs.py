@@ -51,7 +51,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description=(
             "Compute the mean or sum over Top-K-selected tokens of "
-            "g[l,i](x) ||f[l,i](x)-f_b[l,i](x)||_2 for Qwen3-MoE."
+            "g[l,i](x) ||f[l,i](x)-f_b[l,i](x)||_2 for Qwen3.5-MoE."
         )
     )
     parser.add_argument("--model", required=True)
@@ -108,8 +108,8 @@ def parse_args(argv=None):
 def _validate_args(args):
     if args.model_name not in NAME_TO_MODEL:
         raise ValueError(f"Unknown --model_name: {args.model_name}")
-    if NAME_TO_MODEL[args.model_name] != ModelType.QWEN3MOE:
-        raise ValueError("This first implementation supports Qwen3-MoE only.")
+    if NAME_TO_MODEL[args.model_name] != ModelType.QWEN35MOE:
+        raise ValueError("PoP expert-cost collection supports Qwen3.5-MoE only.")
     if args.average_bits > 16:
         raise ValueError("--average_bits must be at most 16.")
     if args.seed < 0:

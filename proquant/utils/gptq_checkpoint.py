@@ -1,4 +1,4 @@
-"""Safe, reusable checkpoints captured after GPTQ and before fine-tuning."""
+"""Safe, reusable checkpoints captured after GPTQ and before router fine-tuning."""
 
 from __future__ import annotations
 
@@ -74,7 +74,9 @@ def build_gptq_checkpoint_identity(args, input_ids, attention_mask):
         "quantization": {
             "quantizer": args.quantizer,
             "reproduce_mcmoe": bool(args.reproduce_mcmoe),
-            "attn_wbits": args.attn_wbits,
+            "attn_wbits": 16,
+            "linear_attn_wbits": getattr(args, "linear_attn_wbits", None),
+            "softmax_attn_wbits": getattr(args, "softmax_attn_wbits", None),
             "gate_wbits": args.gate_wbits,
             "dense_wbits": args.dense_wbits,
             "expert_wbits": args.expert_wbits,

@@ -245,7 +245,7 @@ def main(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="ProQuant inference")
+    parser = argparse.ArgumentParser(description="ProQuant Inference")
 
     # model args
     parser.add_argument(

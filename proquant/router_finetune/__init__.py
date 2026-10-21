@@ -1,1 +1,1 @@
-"""Post-quantization router and norm fine-tuning utilities."""
+"""Teacher-guided, layer-wise router fine-tuning utilities."""

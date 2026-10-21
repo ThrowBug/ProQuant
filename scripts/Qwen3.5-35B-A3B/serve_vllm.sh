@@ -7,12 +7,13 @@ cd "${repo_root}"
 
 # FP loads the original checkpoint. FQ loads a standard BF16 fake-quant
 # checkpoint containing dequantized approximate weights W_hat.
-model_name="Qwen/Qwen3-30B-A3B-Instruct-2507"
+model_name="Qwen/Qwen3.5-35B-A3B"
 model_variant="${MODEL_VARIANT:-FQ}"
 model_variant="${model_variant^^}"
 
 bpe="${BPE:-2.0}"
-attn_wbits="${ATTN_WBITS:-4}"
+linear_attn_wbits="${LINEAR_ATTN_WBITS:-4}"
+softmax_attn_wbits="${SOFTMAX_ATTN_WBITS:-4}"
 dense_wbits="${DENSE_WBITS:-4}"
 calib_dataset="${CALIB_DATASET:-c4}"
 calib_seed="${CALIB_SEED:-${SEED:-0}}"
@@ -72,19 +73,19 @@ else
 fi
 qtype="$(basename "$(dirname "${bit_cfg}")")"
 prefix="$(basename "${bit_cfg}" .pkl)"
-default_fq_path="results/fake_quant_models/${model_name}/${qtype}/${prefix}_A${attn_wbits}-G16-D${dense_wbits}-E${bpe}${rft_tag}"
+default_fq_path="results/fake_quant_models/${model_name}/${qtype}/${prefix}_LA${linear_attn_wbits}-SA${softmax_attn_wbits}-G16-D${dense_wbits}-E${bpe}${rft_tag}"
 
 case "${model_variant}" in
     FP)
         model_path="${FP_MODEL_PATH:-${model_name}}"
-        served_model_name="${SERVED_MODEL_NAME:-qwen3-30b-a3b-2507-fp}"
+        served_model_name="${SERVED_MODEL_NAME:-qwen35-35b-a3b-fp}"
         ;;
     FQ)
         model_path="${FQ_MODEL_PATH:-${default_fq_path}}"
-        served_model_name="${SERVED_MODEL_NAME:-qwen3-30b-a3b-2507-fq}"
+        served_model_name="${SERVED_MODEL_NAME:-qwen35-35b-a3b-fq}"
         if [[ ! -d "${model_path}" ]]; then
             echo "Fake-quant checkpoint not found: ${model_path}" >&2
-            echo "Run scripts/Qwen3-30B-A3B-Instruct-2507/quantize.sh first or set FQ_MODEL_PATH." >&2
+            echo "Run scripts/Qwen3.5-35B-A3B/quantize.sh first or set FQ_MODEL_PATH." >&2
             exit 1
         fi
         if [[ ! -f "${model_path}/config.json" || ! -f "${model_path}/tokenizer_config.json" ]]; then
@@ -139,7 +140,6 @@ serve_args=(
     --data-parallel-size "${data_parallel_size}"
     --gpu-memory-utilization "${gpu_memory_utilization}"
     --generation-config vllm
-    --disable-log-requests
 )
 if [[ -n "${MAX_MODEL_LEN:-}" ]]; then serve_args+=(--max-model-len "${MAX_MODEL_LEN}"); fi
 if [[ "${ENABLE_EXPERT_PARALLEL:-false}" == "true" ]]; then serve_args+=(--enable-expert-parallel); fi
@@ -147,7 +147,7 @@ if [[ "${TRUST_REMOTE_CODE:-false}" == "true" ]]; then serve_args+=(--trust-remo
 serve_args+=("$@")
 
 echo "=============================================="
-echo ">>> Starting Qwen3-30B-A3B-Instruct-2507 vLLM service"
+echo ">>> Starting Qwen3.5-35B-A3B vLLM service"
 echo " Model variant:       ${model_variant}"
 echo " Model path:          ${model_path}"
 echo " Served model name:   ${served_model_name}"

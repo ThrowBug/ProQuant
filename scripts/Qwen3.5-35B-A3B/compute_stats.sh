@@ -7,7 +7,7 @@ cd "${repo_root}"
 
 # Qwen3-30B-A3B gradient statistics historically require about 3 x 80 GB GPUs.
 # Override CUDA_VISIBLE_DEVICES for a different machine.
-model_name="Qwen/Qwen3-30B-A3B-Instruct-2507"
+model_name="Qwen/Qwen3.5-35B-A3B"
 model="${MODEL:-${model_name}}"
 model_str=""
 model_dtype="bfloat16"

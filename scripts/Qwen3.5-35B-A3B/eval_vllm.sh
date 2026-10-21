@@ -8,8 +8,8 @@ cd "${repo_root}"
 model_variant="${MODEL_VARIANT:-FQ}"
 model_variant="${model_variant^^}"
 case "${model_variant}" in
-    FP) served_model_name="${SERVED_MODEL_NAME:-qwen3-30b-a3b-2507-fp}" ;;
-    FQ) served_model_name="${SERVED_MODEL_NAME:-qwen3-30b-a3b-2507-fq}" ;;
+    FP) served_model_name="${SERVED_MODEL_NAME:-qwen35-35b-a3b-fp}" ;;
+    FQ) served_model_name="${SERVED_MODEL_NAME:-qwen35-35b-a3b-fq}" ;;
     *) echo "MODEL_VARIANT must be FP or FQ, got: ${model_variant}" >&2; exit 1 ;;
 esac
 
@@ -26,13 +26,17 @@ api_url="${api_url%/}"
 api_key="${VLLM_API_KEY:-EMPTY}"
 datasets="${DATASETS:-gsm8k}"
 eval_batch_size="${EVAL_BATCH_SIZE:-8}"
-default_generation_config='{"temperature":0.0,"max_tokens":2048,"seed":0,"timeout":600,"retries":3}'
+
+# Qwen3.5 enables thinking by default.  Disable it in the request-side chat
+# template so evaluation matches Qwen3-30B-A3B-Instruct-2507's non-thinking
+# protocol.  Supplying GENERATION_CONFIG replaces this complete default.
+default_generation_config='{"temperature":0.0,"max_tokens":2048,"seed":0,"timeout":600,"retries":3,"extra_body":{"chat_template_kwargs":{"enable_thinking":false}}}'
 generation_config="${GENERATION_CONFIG:-${default_generation_config}}"
 read -r -a dataset_args <<< "${datasets}"
 
 if ! curl --fail --silent --show-error --header "Authorization: Bearer ${api_key}" "${api_url}/models" >/dev/null; then
     echo "vLLM API is unavailable at ${api_url}." >&2
-    echo "Start scripts/Qwen3-30B-A3B-Instruct-2507/serve_vllm.sh first." >&2
+    echo "Start scripts/Qwen3.5-35B-A3B/serve_vllm.sh first." >&2
     exit 1
 fi
 
@@ -52,12 +56,13 @@ if [[ -n "${DATASET_HUB:-}" ]]; then eval_args+=(--dataset-hub "${DATASET_HUB}")
 eval_args+=("$@")
 
 echo "=============================================="
-echo ">>> Qwen3-30B-A3B-Instruct-2507 EvalScope API evaluation"
+echo ">>> Qwen3.5-35B-A3B EvalScope API evaluation"
 echo " Model variant:       ${model_variant}"
 echo " Served model name:   ${served_model_name}"
 echo " API URL:             ${api_url}"
 echo " Datasets:            ${datasets}"
 echo " Eval batch size:     ${eval_batch_size}"
+echo " Thinking:            disabled by default"
 echo " Limit:               ${LIMIT:-full dataset}"
 echo "=============================================="
 

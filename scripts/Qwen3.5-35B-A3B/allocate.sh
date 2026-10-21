@@ -5,7 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../.." && pwd)"
 cd "${repo_root}"
 
-model_name="Qwen/Qwen3-30B-A3B-Instruct-2507"
+model_name="Qwen/Qwen3.5-35B-A3B"
 allocation_metric="${ALLOCATION_METRIC:-pop}" # pop | layer_re
 normalize_by_activation_count="${NORMALIZE_BY_ACTIVATION_COUNT:-true}"
 bits_per_expert="${BITS_PER_EXPERT:-2.0}"
@@ -45,7 +45,7 @@ case "${allocation_metric}" in
         expert_cost_path="${POP_COST_PATH:-${default_expert_cost_path}}"
         if [[ ! -f "${expert_cost_path}" ]]; then
             echo "Expert-cost artifact not found: ${expert_cost_path}" >&2
-            echo "Run scripts/Qwen3-30B-A3B-Instruct-2507/compute_pop_costs.sh first." >&2
+            echo "Run scripts/Qwen3.5-35B-A3B/compute_pop_costs.sh first." >&2
             exit 1
         fi
         stat_args=(--pop_cost_path "${expert_cost_path}")
@@ -56,7 +56,7 @@ case "${allocation_metric}" in
         layer_re_path="${LAYER_RE_PATH:-${default_layer_re_path}}"
         if [[ ! -f "${layer_re_path}" ]]; then
             echo "Layer reconstruction statistics not found: ${layer_re_path}" >&2
-            echo "Run scripts/Qwen3-30B-A3B-Instruct-2507/compute_stats.sh first." >&2
+            echo "Run scripts/Qwen3.5-35B-A3B/compute_stats.sh first." >&2
             exit 1
         fi
         stat_args=(--layer_re_path "${layer_re_path}")

@@ -25,7 +25,7 @@ def load_causal_lm_checkpoint(
     trust_remote_code=False,
     device_map="cpu",
 ):
-    """Load a standard Hugging Face causal-LM checkpoint for GEMQ workflows."""
+    """Load a standard Hugging Face causal-LM checkpoint for ProQuant workflows."""
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_path,
         device_map=device_map,

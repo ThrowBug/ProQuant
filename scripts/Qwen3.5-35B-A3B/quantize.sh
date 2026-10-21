@@ -8,7 +8,7 @@ cd "${repo_root}"
 # ===============================
 #  Model settings
 # ===============================
-model_name="Qwen/Qwen3-30B-A3B-Instruct-2507"
+model_name="Qwen/Qwen3.5-35B-A3B"
 model="${MODEL:-${model_name}}"
 model_dtype="bfloat16"
 gpus="${CUDA_VISIBLE_DEVICES:-0,1,2}"
@@ -86,12 +86,13 @@ fi
 bit_cfg="${BIT_CFG_PATH:-${default_bit_cfg}}"
 if [[ ! -f "${bit_cfg}" ]]; then
     echo "Bit allocation config not found: ${bit_cfg}" >&2
-    echo "Run scripts/Qwen3-30B-A3B-Instruct-2507/allocate.sh first or set BIT_CFG_PATH." >&2
+    echo "Run scripts/Qwen3.5-35B-A3B/allocate.sh first or set BIT_CFG_PATH." >&2
     exit 1
 fi
-# The legacy Qwen script warns that the MC-MoE GPTQ implementation can produce NaNs.
+# Optional compatibility switch for the inherited MC-MoE GPTQ implementation.
 reproduce_mcmoe="${REPRODUCE_MCMOE:-false}"
-attn_wbits="${ATTN_WBITS:-4}"
+linear_attn_wbits="${LINEAR_ATTN_WBITS:-4}"
+softmax_attn_wbits="${SOFTMAX_ATTN_WBITS:-4}"
 dense_wbits="${DENSE_WBITS:-4}"
 
 # ===============================
@@ -146,7 +147,7 @@ data_args=(
 )
 
 bpe_int=$(printf "%.0f" "${bpe}")
-quant_args=(--quantizer "${quantizer}" --expert_wbits "${bpe_int}" --groupsize 128 --mse --attn_wbits "${attn_wbits}" --dense_wbits "${dense_wbits}")
+quant_args=(--quantizer "${quantizer}" --expert_wbits "${bpe_int}" --groupsize 128 --mse --linear_attn_wbits "${linear_attn_wbits}" --softmax_attn_wbits "${softmax_attn_wbits}" --dense_wbits "${dense_wbits}")
 if [[ "${reproduce_mcmoe}" == "true" ]]; then
     quant_args+=(--reproduce_mcmoe)
 fi
@@ -194,7 +195,7 @@ if [[ "${cuda_diagnostics}" == "true" ]]; then
 fi
 
 prefix="${quant_allocation_tag}"
-gptq_checkpoint_path="${GPTQ_CHECKPOINT_PATH:-${gptq_checkpoint_root}/${model_name}/${qtype}/${prefix}_A${attn_wbits}-G16-D${dense_wbits}-E${bpe}}"
+gptq_checkpoint_path="${GPTQ_CHECKPOINT_PATH:-${gptq_checkpoint_root}/${model_name}/${qtype}/${prefix}_LA${linear_attn_wbits}-SA${softmax_attn_wbits}-G16-D${dense_wbits}-E${bpe}}"
 checkpoint_args=()
 if [[ "${save_gptq_checkpoint}" == "true" && "${load_gptq_checkpoint}" == "true" ]]; then
     echo "SAVE_GPTQ_CHECKPOINT and LOAD_GPTQ_CHECKPOINT cannot both be true." >&2
@@ -215,7 +216,7 @@ elif [[ "${load_gptq_checkpoint}" == "true" ]]; then
 fi
 
 if [[ "${save_model}" == "true" ]]; then
-    save_path="results/fake_quant_models/${model_name}/${qtype}/${prefix}_A${attn_wbits}-G16-D${dense_wbits}-E${bpe}${rft_tag}"
+    save_path="${SAVE_PATH:-results/fake_quant_models/${model_name}/${qtype}/${prefix}_LA${linear_attn_wbits}-SA${softmax_attn_wbits}-G16-D${dense_wbits}-E${bpe}${rft_tag}}"
     case "${rft_trainer}" in
         norm_ft|roco)
             if [[ "${finetune}" == "true" && -e "${save_path}" ]]; then
@@ -234,7 +235,7 @@ fi
 #  Run
 # ===============================
 echo "=============================================="
-echo ">>> Qwen3-30B-A3B-Instruct-2507 fake-quant job"
+echo ">>> Qwen3.5-35B-A3B fake-quant job"
 echo "----------------------------------------------"
 echo " Model:            ${model_name}"
 echo " Model dtype:      ${model_dtype}"
@@ -246,7 +247,7 @@ echo " Allocation metric:${allocation_metric}"
 echo " Expert budget:    ${bpe} bits"
 echo " Bit config:       ${bit_cfg}"
 echo " Allocation tag:   ${quant_allocation_tag}"
-echo " Attn wbits:       ${attn_wbits}"
+echo " Attention bits:   linear=${linear_attn_wbits}, softmax=${softmax_attn_wbits}"
 echo " Dense wbits:      ${dense_wbits}"
 echo " Fine-tuning:      ${finetune} (trainer=${rft_trainer})"
 if [[ "${finetune}" == "true" && "${rft_trainer}" == "router_ft" ]]; then

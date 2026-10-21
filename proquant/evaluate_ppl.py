@@ -1,4 +1,4 @@
-"""Evaluate a saved Hugging Face checkpoint with the quantization PPL path."""
+"""Evaluate a saved Hugging Face checkpoint with ProQuant's perplexity path."""
 
 import argparse
 
@@ -24,13 +24,13 @@ def _parse_datasets(value):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
-        description="Evaluate a saved Hugging Face model with the same PPL code as quantize.py."
+        description="Evaluate a saved ProQuant/Hugging Face model with the same PPL code as quantize.py."
     )
     parser.add_argument("--model", required=True, help="Saved Hugging Face checkpoint path")
     parser.add_argument(
         "--model_name",
         required=True,
-        help="Model key used by the inherited model-specific offloading utilities",
+        help="Model key used by model-specific offloading utilities",
     )
     parser.add_argument(
         "--model_dtype",

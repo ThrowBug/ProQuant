@@ -1,6 +1,3 @@
-from hqq.core.quantize import HQQLinear, BaseQuantizeConfig
-from hqq.core.quantize import Quantizer
-
 from proquant.utils.model_utils import *
 
 
@@ -17,10 +14,8 @@ def build_alloc_cfg(model, args, expert_bit_cfg=None):
             ...  
         ]
     """
-    # Expert allocations are mandatory; the caller has already loaded and, if
-    # needed, remapped the configuration after physical zero-bit pruning.
     if expert_bit_cfg is None:
-        raise ValueError("An expert bit-allocation config is required for GPTQ.")
+        raise ValueError("An expert bit-allocation config is required.")
 
     layers = get_blocks(model, args.model_name)
 
@@ -33,7 +28,11 @@ def build_alloc_cfg(model, args, expert_bit_cfg=None):
         for name, m in named_linears.items():
             mtype = get_module_type(name, args.model_name)
             if mtype == LinearModuleType.ATTN:
-                layer_bit_cfg[name] = args.attn_wbits
+                layer_bit_cfg[name] = 16
+            elif mtype == LinearModuleType.LINEAR_ATTN:
+                layer_bit_cfg[name] = args.linear_attn_wbits
+            elif mtype == LinearModuleType.SOFTMAX_ATTN:
+                layer_bit_cfg[name] = args.softmax_attn_wbits
             elif mtype == LinearModuleType.GATE:
                 layer_bit_cfg[name] = args.gate_wbits
             elif mtype == LinearModuleType.DENSE:
@@ -48,6 +47,11 @@ def build_alloc_cfg(model, args, expert_bit_cfg=None):
                         "physically pruned and remapped first."
                     )
                 layer_bit_cfg[name] = expert_bit
+            else:
+                # Explicitly record the skip instead of leaving a hole in the
+                # mapping. Qwen3.5 has auxiliary linear-attention projections
+                # which are intentionally kept full precision.
+                layer_bit_cfg[name] = 16
         bit_cfg.append(layer_bit_cfg)
 
     return bit_cfg
@@ -61,6 +65,11 @@ def create_hqq_linear_from_quantized_weights(
 
     NOTE: We assume the grouped quantization is performed at hidden_dim (i.e., axis=1).
     """
+    # HQQ is required only by the opt-in real-quantization path. Keeping this
+    # import lazy lets the standard pseudo-quantized checkpoint path remain
+    # independent of HQQ/Transformers integration details.
+    from hqq.core.quantize import BaseQuantizeConfig, HQQLinear, Quantizer
+
     # create a dummy HQQLinear layer
     # skip initialization (HQQ quantization) by passing a None linear_layer
     quant_config = BaseQuantizeConfig(nbits, group_size)

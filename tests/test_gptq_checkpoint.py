@@ -14,7 +14,9 @@ from proquant.utils.gptq_checkpoint import (
 )
 
 
-def _args(**overrides):
+def _args(tmp_path, **overrides):
+    bit_cfg = tmp_path / "allocation.pkl"
+    bit_cfg.write_bytes(b"test-allocation")
     values = {
         "model": "org/example-model",
         "model_name": "org/example-model",
@@ -22,10 +24,11 @@ def _args(**overrides):
         "attn_impl": "eager",
         "calib_dataset": "c4",
         "seed": 0,
-        "bit_cfg": "",
+        "bit_cfg": str(bit_cfg),
         "quantizer": "gptq",
         "reproduce_mcmoe": False,
-        "attn_wbits": 4,
+        "linear_attn_wbits": 4,
+        "softmax_attn_wbits": 4,
         "gate_wbits": 16,
         "dense_wbits": 4,
         "expert_wbits": 2,
@@ -59,18 +62,9 @@ class _FakeModel(torch.nn.Module):
         (path / "config.json").write_text("{}", encoding="utf-8")
 
 
-def test_checkpoint_identity_requires_bit_allocation():
-    with pytest.raises(ValueError, match="requires --bit_cfg"):
-        build_gptq_checkpoint_identity(_args(), torch.arange(12).reshape(2, 6), None)
-
-
 def test_checkpoint_save_is_complete_non_mutating_and_non_overwriting(tmp_path):
     input_ids = torch.arange(12).reshape(2, 6)
-    bit_cfg = tmp_path / "bits.pkl"
-    bit_cfg.write_bytes(b"allocated-expert-bits")
-    identity = build_gptq_checkpoint_identity(_args(bit_cfg=str(bit_cfg)), input_ids, None)
-    assert identity["allocation"]["mixed"] is True
-    assert identity["allocation"]["bit_config_sha256"] is not None
+    identity = build_gptq_checkpoint_identity(_args(tmp_path), input_ids, None)
     model = _FakeModel()
     pruning_metadata = {"original_num_experts": 4, "num_experts": 3}
     metadata = build_gptq_checkpoint_metadata(identity, model, pruning_metadata)
@@ -92,9 +86,7 @@ def test_checkpoint_save_is_complete_non_mutating_and_non_overwriting(tmp_path):
 
 def test_checkpoint_load_validates_identity_and_completion(tmp_path):
     input_ids = torch.arange(12).reshape(2, 6)
-    bit_cfg = tmp_path / "bits.pkl"
-    bit_cfg.write_bytes(b"allocated-expert-bits")
-    identity = build_gptq_checkpoint_identity(_args(bit_cfg=str(bit_cfg)), input_ids, None)
+    identity = build_gptq_checkpoint_identity(_args(tmp_path), input_ids, None)
     model = _FakeModel()
     metadata = build_gptq_checkpoint_metadata(identity, model)
     checkpoint = tmp_path / "checkpoint"
@@ -103,10 +95,24 @@ def test_checkpoint_load_validates_identity_and_completion(tmp_path):
     loaded = load_gptq_checkpoint_metadata(checkpoint, identity)
     assert loaded["identity"] == identity
 
-    different = build_gptq_checkpoint_identity(_args(seed=1, bit_cfg=str(bit_cfg)), input_ids, None)
+    different = build_gptq_checkpoint_identity(_args(tmp_path, seed=1), input_ids, None)
     with pytest.raises(ValueError, match="does not match"):
         load_gptq_checkpoint_metadata(checkpoint, different)
 
     (checkpoint / SUCCESS_FILENAME).unlink()
     with pytest.raises(RuntimeError, match="incomplete"):
         load_gptq_checkpoint_metadata(checkpoint, identity)
+
+
+def test_checkpoint_identity_tracks_qwen35_attention_bitwidths(tmp_path):
+    input_ids = torch.arange(12).reshape(2, 6)
+    baseline = build_gptq_checkpoint_identity(_args(tmp_path), input_ids, None)
+    changed_linear = build_gptq_checkpoint_identity(
+        _args(tmp_path, linear_attn_wbits=3), input_ids, None
+    )
+    changed_softmax = build_gptq_checkpoint_identity(
+        _args(tmp_path, softmax_attn_wbits=3), input_ids, None
+    )
+
+    assert baseline != changed_linear
+    assert baseline != changed_softmax
